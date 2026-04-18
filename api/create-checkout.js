@@ -1,0 +1,1 @@
+const stripe=require('stripe')(process.env.STRIPE_SECRET_KEY);const PLANS={basis:{priceId:process.env.STRIPE_PRICE_BASIS},premium:{priceId:process.env.STRIPE_PRICE_PREMIUM},expose:{priceId:process.env.STRIPE_PRICE_EXPOSE}};module.exports=async function handler(req,res){if(req.method==='OPTIONS')return res.status(200).end();​​​​​​​​​​​​​​​​
