@@ -1,0 +1,1 @@
+const stripe=require('stripe')(process.env.STRIPE_SECRET_KEY);const crypto=require('crypto');const TOKEN_SECRET=process.env.TOKEN_SECRET||'aendere-mich';function createToken(sessionId,plan){const payload=JSON.stringify({sessionId,plan,ts:Date.now(),exp:Date.now()+2*60*60*1000});const sig=crypto.createHmac​​​​​​​​​​​​​​​​
