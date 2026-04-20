@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ImmoWert — KI-Bewertung für Ihre Immobilie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+:root{--ink:#1a1a2e;--cream:#f5f0e8;--gold:#c9a84c;--gold-light:#e8d5a3;--rust:#8b4513;--muted:#6b6560;--white:#fff;--card-bg:#fefcf8;--border:#e0d8cc;--green:#2e7d32;--green-bg:#e8f5e9;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);overflow-x:hidden;}
+
+nav{position:fixed;top:0;width:100%;z-index:200;background:rgba(245,240,232,0.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 2.5rem;display:flex;align-items:center;justify-content:space-between;height:64px;}
+.nav-logo{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--ink);text-decoration:none;letter-spacing:-0.02em;}
+.nav-logo span{color:var(--gold);}
+.nav-cta{background:var(--ink);color:var(--cream);border:none;padding:0.5rem 1.4rem;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:500;cursor:pointer;letter-spacing:0.04em;transition:background 0.2s;}
+.nav-cta:hover{background:var(--gold);color:var(--ink);}
+
+.hero{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;align-items:center;padding:80px 4rem 4rem;gap:4rem;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;top:-200px;right:-200px;width:700px;height:700px;background:radial-gradient(circle,rgba(201,168,76,0.12) 0%,transparent 70%);pointer-events:none;}
+.hero-eyebrow{font-size:0.75rem;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;}
+.hero-eyebrow::before{content:'';display:block;width:32px;height:1px;background:var(--gold);}
+.hero h1{font-family:'Playfair Display',serif;font-size:clamp(2.8rem,5vw,4.2rem);line-height:1.1;font-weight:700;letter-spacing:-0.03em;margin-bottom:1.5rem;}
+.hero h1 em{font-style:italic;color:var(--gold);}
+.hero-sub{font-size:1.05rem;color:var(--muted);line-height:1.7;max-width:420px;margin-bottom:2.5rem;font-weight:300;}
+.hero-actions{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;}
+.btn-primary{background:var(--ink);color:var(--cream);border:none;padding:0.9rem 2rem;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer;letter-spacing:0.03em;transition:all 0.2s;}
+.btn-primary:hover{background:var(--gold);color:var(--ink);}
+.btn-secondary{background:transparent;color:var(--ink);border:1px solid var(--border);padding:0.9rem 2rem;font-family:'DM Sans',sans-serif;font-size:0.9rem;cursor:pointer;transition:all 0.2s;}
+.btn-secondary:hover{border-color:var(--ink);}
+.hero-trust{display:flex;gap:2rem;margin-top:3rem;flex-wrap:wrap;}
+.trust-item{display:flex;flex-direction:column;}
+.trust-num{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--ink);}
+.trust-label{font-size:0.75rem;color:var(--muted);letter-spacing:0.05em;}
+
+.preview-card{background:var(--white);border:1px solid var(--border);padding:2rem;box-shadow:0 24px 64px rgba(26,26,46,0.08);position:relative;}
+.preview-card::before{content:'Beispiel-Analyse';position:absolute;top:-12px;left:24px;background:var(--gold);color:var(--ink);font-size:0.7rem;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;padding:0.2rem 0.75rem;}
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);}
+.card-type{font-size:0.75rem;color:var(--muted);letter-spacing:0.05em;}
+.card-title{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;margin-top:0.2rem;}
+.card-badge{background:var(--green-bg);color:var(--green);font-size:0.7rem;font-weight:500;padding:0.25rem 0.6rem;}
+.price-range{text-align:center;margin:1.5rem 0;}
+.price-label{font-size:0.7rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;}
+.price-value{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;color:var(--ink);margin:0.25rem 0;}
+.price-sub{font-size:0.8rem;color:var(--muted);}
+.bar-container{margin:1rem 0;}
+.bar-label{display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;}
+.bar-track{height:6px;background:var(--border);overflow:hidden;}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--gold-light),var(--gold));}
+.factors-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:1.5rem;}
+.factor{padding:0.75rem;background:var(--card-bg);border:1px solid var(--border);}
+.factor-name{font-size:0.7rem;color:var(--muted);}
+.factor-value{font-size:0.9rem;font-weight:500;margin-top:0.2rem;}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:0.4rem;}
+.dot-g{background:#4caf50;}.dot-y{background:#ff9800;}.dot-r{background:#f44336;}
+
+.section{padding:6rem 4rem;}
+.section-alt{background:var(--white);}
+.section-label{font-size:0.7rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);margin-bottom:1rem;display:flex;align-items:center;gap:0.75rem;}
+.section-label::before{content:'';width:24px;height:1px;background:var(--gold);}
+.section-title{font-family:'Playfair Display',serif;font-size:clamp(2rem,3.5vw,3rem);font-weight:700;line-height:1.15;letter-spacing:-0.03em;max-width:500px;margin-bottom:1rem;}
+.section-sub{color:var(--muted);max-width:520px;line-height:1.7;font-weight:300;margin-bottom:4rem;}
+
+.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;}
+.step{padding:2rem;border:1px solid var(--border);background:var(--card-bg);transition:border-color 0.2s,box-shadow 0.2s;}
+.step:hover{border-color:var(--gold);box-shadow:0 8px 32px rgba(201,168,76,0.1);}
+.step-num{font-family:'Playfair Display',serif;font-size:3rem;font-weight:700;color:var(--gold-light);line-height:1;margin-bottom:1rem;}
+.step h3{font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:0.75rem;}
+.step p{font-size:0.88rem;color:var(--muted);line-height:1.65;}
+
+.pricing-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2rem;max-width:860px;}
+.price-card{padding:2.5rem;border:1px solid var(--border);background:var(--card-bg);position:relative;}
+.price-card.featured{border-color:var(--gold);background:var(--ink);color:var(--cream);}
+.price-card-badge{position:absolute;top:-12px;left:2rem;background:var(--gold);color:var(--ink);font-size:0.7rem;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;padding:0.2rem 0.75rem;}
+.price-card-name{font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;}
+.price-card.featured .price-card-name{color:var(--gold);}
+.price-big{font-family:'Playfair Display',serif;font-size:3rem;font-weight:700;margin-bottom:0.25rem;}
+.price-card-muted{font-size:0.82rem;color:var(--muted);margin-bottom:2rem;}
+.price-card.featured .price-card-muted{color:rgba(245,240,232,0.5);}
+.price-features{list-style:none;margin-bottom:2rem;}
+.price-features li{font-size:0.88rem;padding:0.5rem 0;border-bottom:1px solid var(--border);color:var(--muted);display:flex;align-items:center;gap:0.5rem;}
+.price-card.featured .price-features li{border-color:rgba(245,240,232,0.1);color:rgba(245,240,232,0.8);}
+.check{color:var(--gold);}
+.btn-price{width:100%;padding:0.9rem;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;cursor:pointer;letter-spacing:0.04em;border:1px solid var(--ink);background:transparent;color:var(--ink);transition:all 0.2s;}
+.btn-price:hover{background:var(--ink);color:var(--cream);}
+.price-card.featured .btn-price{background:var(--gold);color:var(--ink);border-color:var(--gold);}
+
+.data-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-bottom:3rem;}
+.data-card{padding:1.75rem;border:1px solid var(--border);background:var(--card-bg);}
+.data-card-icon{font-size:1.5rem;margin-bottom:1rem;}
+.data-card h4{font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:0.5rem;}
+.data-card p{font-size:0.82rem;color:var(--muted);line-height:1.6;}
+.data-tag{display:inline-block;margin-top:0.75rem;font-size:0.65rem;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;padding:0.2rem 0.6rem;background:var(--green-bg);color:var(--green);}
+.data-tag.paid{background:#fff3e0;color:#e65100;}
+
+.boris-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+.boris-table th{padding:0.6rem 0.8rem;text-align:left;font-weight:500;background:var(--ink);color:var(--cream);letter-spacing:0.04em;font-size:0.72rem;text-transform:uppercase;}
+.boris-table td{padding:0.6rem 0.8rem;border-bottom:1px solid var(--border);}
+.boris-table tr:nth-child(even) td{background:rgba(201,168,76,0.04);}
+.boris-table tr:hover td{background:rgba(201,168,76,0.08);}
+.price-cell{font-weight:500;color:var(--rust);}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(26,26,46,0.72);backdrop-filter:blur(5px);align-items:center;justify-content:center;}
+.modal-overlay.active{display:flex;}
+.modal{background:var(--white);width:90%;max-width:480px;padding:2.5rem;position:relative;box-shadow:0 32px 80px rgba(26,26,46,0.25);animation:modalIn 0.25s ease;}
+@keyframes modalIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.modal-close{position:absolute;top:1rem;right:1.25rem;font-size:1.4rem;cursor:pointer;color:var(--muted);background:none;border:none;line-height:1;}
+.modal-close:hover{color:var(--ink);}
+.modal-title{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:0.4rem;}
+.modal-sub{font-size:0.85rem;color:var(--muted);margin-bottom:1.75rem;line-height:1.5;}
+.plan-toggle{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.5rem;}
+.plan-option{border:1.5px solid var(--border);padding:1rem;cursor:pointer;transition:border-color 0.15s;position:relative;}
+.plan-option.selected{border-color:var(--gold);background:rgba(201,168,76,0.05);}
+.plan-option-label{font-size:0.7rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);}
+.plan-option.selected .plan-option-label{color:var(--gold);}
+.plan-option-price{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;margin:0.2rem 0;}
+.plan-option-desc{font-size:0.75rem;color:var(--muted);}
+.plan-best{position:absolute;top:-9px;right:10px;background:var(--gold);color:var(--ink);font-size:0.6rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:0.15rem 0.5rem;}
+#stripe-card-element{border:1px solid var(--border);padding:0.75rem 0.9rem;background:var(--card-bg);margin-bottom:0.5rem;}
+#card-errors{color:#c62828;font-size:0.78rem;min-height:1.2rem;margin-bottom:0.75rem;}
+.pay-btn{width:100%;background:var(--ink);color:var(--cream);border:none;padding:1rem;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer;letter-spacing:0.04em;transition:background 0.2s;display:flex;align-items:center;justify-content:center;gap:0.5rem;}
+.pay-btn:hover:not(:disabled){background:var(--gold);color:var(--ink);}
+.pay-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.pay-secure{font-size:0.72rem;color:var(--muted);text-align:center;margin-top:0.75rem;}
+
+/* UPLOAD SECTION */
+.upload-section{padding:6rem 4rem;background:var(--ink);color:var(--cream);position:relative;overflow:hidden;}
+.upload-section::before{content:'';position:absolute;bottom:-300px;right:-200px;width:600px;height:600px;background:radial-gradient(circle,rgba(201,168,76,0.15) 0%,transparent 70%);pointer-events:none;}
+.upload-section .section-title{color:var(--cream);}
+.upload-section .section-sub{color:rgba(245,240,232,0.6);}
+
+#payment-gate{max-width:620px;}
+#analysis-form{display:none;max-width:660px;}
+
+.gate-plans{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:2rem;}
+.gate-plan{border:1.5px solid rgba(245,240,232,0.15);padding:1.5rem;cursor:pointer;transition:border-color 0.15s;position:relative;}
+.gate-plan.active{border-color:var(--gold);}
+.gate-plan-name{font-size:0.7rem;font-weight:500;text-transform:uppercase;letter-spacing:0.1em;color:rgba(245,240,232,0.45);margin-bottom:0.4rem;}
+.gate-plan.active .gate-plan-name{color:var(--gold);}
+.gate-plan-price{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;}
+.gate-plan-features{font-size:0.78rem;color:rgba(245,240,232,0.5);margin-top:0.5rem;line-height:1.5;}
+.gate-plan-badge{position:absolute;top:-10px;right:12px;background:var(--gold);color:var(--ink);font-size:0.6rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:0.15rem 0.5rem;}
+.gate-pay-btn{background:var(--gold);color:var(--ink);border:none;padding:1rem 2.5rem;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer;letter-spacing:0.05em;transition:background 0.2s;}
+.gate-pay-btn:hover{background:var(--gold-light);}
+.demo-link{display:inline-block;margin-left:1.5rem;font-size:0.82rem;color:rgba(245,240,232,0.35);cursor:pointer;text-decoration:underline;}
+.demo-link:hover{color:rgba(245,240,232,0.65);}
+
+.upload-area{border:1.5px dashed rgba(201,168,76,0.4);padding:2.5rem;text-align:center;background:rgba(245,240,232,0.03);cursor:pointer;transition:border-color 0.2s,background 0.2s;margin-bottom:1rem;}
+.upload-area:hover,.upload-area.dragover{border-color:var(--gold);background:rgba(201,168,76,0.06);}
+.upload-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.7;}
+.upload-text{font-size:0.95rem;color:rgba(245,240,232,0.7);margin-bottom:0.4rem;}
+.upload-sub{font-size:0.78rem;color:rgba(245,240,232,0.4);}
+.upload-count{font-size:0.78rem;color:var(--gold);margin-top:0.4rem;}
+#uploadedImages{display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.25rem;}
+.thumb-wrap{position:relative;}
+.thumb-wrap img{width:90px;height:68px;object-fit:cover;border:1.5px solid rgba(201,168,76,0.3);display:block;}
+.thumb-remove{position:absolute;top:-7px;right:-7px;width:18px;height:18px;background:var(--gold);color:var(--ink);border:none;border-radius:50%;font-size:0.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin:0.75rem 0;}
+.form-group{display:flex;flex-direction:column;gap:0.4rem;}
+.form-label{font-size:0.72rem;letter-spacing:0.08em;color:rgba(245,240,232,0.5);text-transform:uppercase;}
+.form-input{background:rgba(245,240,232,0.07);border:1px solid rgba(245,240,232,0.15);color:var(--cream);padding:0.65rem 0.9rem;font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;transition:border-color 0.2s;}
+.form-input:focus{border-color:var(--gold);}
+.form-input::placeholder{color:rgba(245,240,232,0.25);}
+.form-select{background:rgba(245,240,232,0.07);border:1px solid rgba(245,240,232,0.15);color:var(--cream);padding:0.65rem 0.9rem;font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;appearance:none;}
+.form-select option{background:#1a1a2e;}
+.form-textarea{background:rgba(245,240,232,0.07);border:1px solid rgba(245,240,232,0.15);color:var(--cream);padding:0.65rem 0.9rem;font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;resize:vertical;min-height:72px;width:100%;}
+.form-textarea:focus{border-color:var(--gold);}
+.form-textarea::placeholder{color:rgba(245,240,232,0.25);}
+
+.plan-badge-active{display:inline-flex;align-items:center;gap:0.5rem;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);padding:0.4rem 0.9rem;font-size:0.78rem;color:var(--gold);margin-bottom:1.5rem;}
+.submit-btn{background:var(--gold);color:var(--ink);border:none;padding:1rem 2.5rem;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer;letter-spacing:0.05em;transition:background 0.2s;margin-top:0.75rem;}
+.submit-btn:hover:not(:disabled){background:var(--gold-light);}
+.submit-btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+#result-section{display:none;margin-top:2.5rem;max-width:660px;}
+.result-card{background:var(--white);border:1.5px solid var(--gold);overflow:hidden;}
+.result-header{background:var(--ink);padding:1.25rem 1.75rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(201,168,76,0.3);}
+.result-title{font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--cream);}
+.result-badge{background:var(--green-bg);color:var(--green);font-size:0.7rem;font-weight:500;padding:0.25rem 0.6rem;}
+.result-body{padding:1.75rem;}
+.result-price-block{text-align:center;padding:1.5rem;background:var(--cream);margin-bottom:1.75rem;border:1px solid var(--border);}
+.result-price-label{font-size:0.7rem;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;}
+.result-price-main{font-family:'Playfair Display',serif;font-size:2.8rem;font-weight:700;color:var(--ink);margin:0.25rem 0;}
+.result-price-range{font-size:0.85rem;color:var(--muted);}
+.photo-chips{display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.25rem;}
+.photo-chip{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.2);font-size:0.72rem;color:var(--gold);padding:0.2rem 0.6rem;}
+.result-analysis{font-size:0.9rem;color:#2a2a2a;line-height:1.8;}
+.result-analysis h4{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--ink);margin:1.4rem 0 0.5rem;padding-bottom:0.3rem;border-bottom:1px solid var(--border);}
+.result-analysis p{margin-bottom:0.6rem;}
+.loading-wrap{text-align:center;padding:2.5rem 1rem;}
+.loading-wrap p{font-size:0.88rem;color:var(--muted);margin-top:0.75rem;}
+.loading-dots{display:inline-flex;gap:5px;}
+.loading-dots span{width:8px;height:8px;border-radius:50%;background:var(--gold);animation:db 1.2s infinite;}
+.loading-dots span:nth-child(2){animation-delay:0.2s}.loading-dots span:nth-child(3){animation-delay:0.4s}
+@keyframes db{0%,80%,100%{transform:translateY(0);opacity:0.4}40%{transform:translateY(-7px);opacity:1}}
+.progress-bar-wrap{max-width:300px;margin:0.75rem auto 0;}
+.progress-track{height:3px;background:rgba(201,168,76,0.2);overflow:hidden;}
+.progress-fill{height:100%;background:var(--gold);width:0%;transition:width 0.4s ease;}
+
+.disclaimer{padding:2rem 4rem;background:var(--cream);border-top:1px solid var(--border);font-size:0.75rem;color:var(--muted);line-height:1.6;}
+footer{background:var(--ink);color:rgba(245,240,232,0.5);padding:2rem 4rem;display:flex;justify-content:space-between;align-items:center;font-size:0.78rem;flex-wrap:wrap;gap:1rem;}
+footer .logo{font-family:'Playfair Display',serif;color:var(--cream);font-size:1.1rem;}
+footer .logo span{color:var(--gold);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.hero-left>*{animation:fadeUp 0.6s ease both;}
+.hero-left>*:nth-child(1){animation-delay:0.1s}.hero-left>*:nth-child(2){animation-delay:0.2s}
+.hero-left>*:nth-child(3){animation-delay:0.3s}.hero-left>*:nth-child(4){animation-delay:0.4s}
+.hero-left>*:nth-child(5){animation-delay:0.5s}
+
+@media(max-width:900px){
+  .hero{grid-template-columns:1fr;padding:100px 1.5rem 3rem}
+  .hero-visual{display:none}
+  .steps-grid,.pricing-grid,.data-grid,.gate-plans{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr}
+  .section,.upload-section{padding:4rem 1.5rem}
+  footer,.disclaimer{padding:1.5rem}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="#">Immo<span>Wert</span></a>
+  <button class="nav-cta" onclick="scrollToUpload()">Jetzt bewerten →</button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-eyebrow">Spezialisierte Immobilien-KI</div>
+    <h1>Was ist Ihre<br>Immobilie <em>wirklich</em><br>wert?</h1>
+    <p class="hero-sub">Fotos hochladen — unsere spezialisierte ImmoAI™ analysiert Zustand, Lage und Ausstattung. In Minuten eine fundierte Bewertung auf Basis offizieller Bodenrichtwerte.</p>
+    <div class="hero-actions">
+      <button class="btn-primary" onclick="scrollToUpload()">Bewertung starten →</button>
+      <button class="btn-secondary" onclick="scrollToHow()">Wie funktioniert es?</button>
+    </div>
+    <div class="hero-trust">
+      <div class="trust-item"><span class="trust-num">BORIS-D</span><span class="trust-label">Amtliche Daten</span></div>
+      <div class="trust-item"><span class="trust-num">ImmoAI™</span><span class="trust-label">Foto-Analyse</span></div>
+      <div class="trust-item"><span class="trust-num">~3 Min</span><span class="trust-label">Analyse-Dauer</span></div>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="preview-card">
+      <div class="card-header">
+        <div><div class="card-type">EINFAMILIENHAUS · MÜNCHEN</div><div class="card-title">Pasing · 145 m² · Bj. 1978</div></div>
+        <span class="card-badge">✓ Analysiert</span>
+      </div>
+      <div class="price-range">
+        <div class="price-label">Geschätzter Marktwert</div>
+        <div class="price-value">698.000 €</div>
+        <div class="price-sub">Spanne: 650.000 – 745.000 €</div>
+      </div>
+      <div class="bar-container"><div class="bar-label"><span>Zustand</span><span>Gut</span></div><div class="bar-track"><div class="bar-fill" style="width:78%"></div></div></div>
+      <div class="bar-container"><div class="bar-label"><span>Lage</span><span>Sehr gut</span></div><div class="bar-track"><div class="bar-fill" style="width:91%"></div></div></div>
+      <div class="bar-container"><div class="bar-label"><span>Ausstattung</span><span>Mittel</span></div><div class="bar-track"><div class="bar-fill" style="width:55%"></div></div></div>
+      <div class="factors-grid">
+        <div class="factor"><div class="factor-name">Bodenrichtwert</div><div class="factor-value">2.800 €/m²</div></div>
+        <div class="factor"><div class="factor-name">Energieklasse</div><div class="factor-value"><span class="dot dot-y"></span>D</div></div>
+        <div class="factor"><div class="factor-name">Küche</div><div class="factor-value"><span class="dot dot-g"></span>Renoviert</div></div>
+        <div class="factor"><div class="factor-name">Bad</div><div class="factor-value"><span class="dot dot-r"></span>Veraltet</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section section-alt" id="how-it-works">
+  <div class="section-label">Ablauf</div>
+  <h2 class="section-title">In drei Schritten zur Bewertung</h2>
+  <p class="section-sub">Kein Makler-Termin nötig. Ihre Bewertung basiert auf offiziellen Daten und KI-Bildanalyse.</p>
+  <div class="steps-grid">
+    <div class="step"><div class="step-num">01</div><h3>Plan wählen & bezahlen</h3><p>Basis (9,99 €) oder Premium (19,99 €). Sichere Einmalzahlung via Stripe — kein Abo, keine versteckten Kosten.</p></div>
+    <div class="step"><div class="step-num">02</div><h3>Fotos & Daten hochladen</h3><p>Bis zu 20 Fotos uploaden. ImmoAI™ analysiert jeden Raum: Zustand, Ausstattung, Renovierungsbedarf, Besonderheiten.</p></div>
+    <div class="step"><div class="step-num">03</div><h3>Report in 3 Minuten</h3><p>Preisspanne, Stärken, Optimierungspotenzial, Handlungsempfehlung — bei Premium als PDF zum Download.</p></div>
+  </div>
+</section>
+
+<!-- DATA SOURCES -->
+<section class="section">
+  <div class="section-label">Datenquellen</div>
+  <h2 class="section-title">Womit arbeitet ImmoAI™?</h2>
+  <p class="section-sub">Offizielle amtliche Quellen kombiniert mit spezialisierter KI-Bildanalyse — transparent und nachvollziehbar.</p>
+  <div class="data-grid">
+    <div class="data-card"><div class="data-card-icon">🏛️</div><h4>BORIS-D Bodenrichtwerte</h4><p>Offizielle Bodenrichtwerte der Gutachterausschüsse für alle deutschen PLZ — amtlich, aktuell, rechtssicher nach ImmoWertV.</p><span class="data-tag">✓ Amtlich & kostenlos</span></div>
+    <div class="data-card"><div class="data-card-icon">🔍</div><h4>ImmoAI™ Bildanalyse</h4><p>Spezialisiert trainierte KI-Technologie erkennt auf Fotos: Zustand, Ausstattungsqualität, Renovierungsbedarf, Grundrissqualität und Besonderheiten.</p><span class="data-tag">✓ Einzigartiger Ansatz</span></div>
+    <div class="data-card"><div class="data-card-icon">📊</div><h4>Regionale Marktdaten</h4><p>Historische Preisentwicklungen, Lage-Multiplikatoren und Markttrends für über 400 deutsche Städte und Regionen.</p><span class="data-tag paid">Erweiterung geplant</span></div>
+  </div>
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:0.75rem;">Bodenrichtwert-Referenz — Deutschland (2024/2025)</h3>
+  <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1.25rem;">Wohnbauland, gute Lage · Quelle: BORIS-D / Gutachterausschüsse · Lizenz: dl-de/by-2-0</p>
+  <div style="overflow-x:auto">
+  <table class="boris-table">
+    <thead><tr><th>Stadt</th><th>Bundesland</th><th>Bodenrichtwert €/m²</th><th>Stichtag</th></tr></thead>
+    <tbody>
+      <tr><td>München</td><td>Bayern</td><td class="price-cell">3.200 – 8.500</td><td>01.01.2024</td></tr>
+      <tr><td>Frankfurt a.M.</td><td>Hessen</td><td class="price-cell">1.800 – 4.200</td><td>01.01.2024</td></tr>
+      <tr><td>Hamburg</td><td>Hamburg</td><td class="price-cell">900 – 3.800</td><td>01.01.2024</td></tr>
+      <tr><td>Berlin</td><td>Berlin</td><td class="price-cell">600 – 7.500</td><td>01.01.2025</td></tr>
+      <tr><td>Stuttgart</td><td>Baden-Württemberg</td><td class="price-cell">1.200 – 3.600</td><td>01.01.2024</td></tr>
+      <tr><td>Düsseldorf</td><td>NRW</td><td class="price-cell">700 – 2.400</td><td>01.01.2024</td></tr>
+      <tr><td>Köln</td><td>NRW</td><td class="price-cell">600 – 2.200</td><td>01.01.2024</td></tr>
+      <tr><td>Leipzig</td><td>Sachsen</td><td class="price-cell">180 – 620</td><td>01.01.2024</td></tr>
+      <tr><td>Dresden</td><td>Sachsen</td><td class="price-cell">150 – 550</td><td>01.01.2024</td></tr>
+      <tr><td>Nürnberg</td><td>Bayern</td><td class="price-cell">350 – 1.100</td><td>01.01.2024</td></tr>
+      <tr><td>Hannover</td><td>Niedersachsen</td><td class="price-cell">220 – 900</td><td>01.01.2024</td></tr>
+      <tr><td>Freiburg i.Br.</td><td>Baden-Württemberg</td><td class="price-cell">500 – 1.400</td><td>01.01.2024</td></tr>
+      <tr><td>Münster</td><td>NRW</td><td class="price-cell">350 – 1.050</td><td>01.01.2024</td></tr>
+      <tr><td>Augsburg</td><td>Bayern</td><td class="price-cell">400 – 1.200</td><td>01.01.2024</td></tr>
+      <tr><td>Erfurt</td><td>Thüringen</td><td class="price-cell">80 – 280</td><td>01.01.2024</td></tr>
+      <tr><td>Rostock</td><td>Mecklenburg-VP</td><td class="price-cell">120 – 380</td><td>01.01.2024</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="font-size:0.72rem;color:var(--muted);margin-top:0.75rem;">Datenlizenz Deutschland – Namensnennung – Version 2.0 (dl-de/by-2-0) · Werte sind Richtwertspannen nach PLZ-Zone.</p>
+</section>
+
+<!-- PRICING -->
+<section class="section section-alt">
+  <div class="section-label">Preise</div>
+  <h2 class="section-title">Transparent. Einmalig. Fair.</h2>
+  <p class="section-sub">Kein Abo. Sie zahlen einmal pro Bewertung.</p>
+  <div class="pricing-grid">
+    <div class="price-card">
+      <div class="price-card-name">Basis</div>
+      <div class="price-big">9,99 €</div>
+      <div class="price-card-muted">Einmalige Zahlung · sofort verfügbar</div>
+      <ul class="price-features">
+        <li><span class="check">✓</span> ImmoAI™ Fotoanalyse (bis 5 Fotos)</li>
+        <li><span class="check">✓</span> BORIS-D Bodenrichtwert-Auswertung</li>
+        <li><span class="check">✓</span> Preisspanne & Einschätzung</li>
+        <li><span class="check">✓</span> Online-Report</li>
+      </ul>
+      <button class="btn-price" onclick="openPayment('basis')">Jetzt starten</button>
+    </div>
+    <div class="price-card featured">
+      <span class="price-card-badge">Empfohlen</span>
+      <div class="price-card-name">Premium</div>
+      <div class="price-big">19,99 €</div>
+      <div class="price-card-muted">Einmalige Zahlung · PDF-Download</div>
+      <ul class="price-features">
+        <li><span class="check">✓</span> Alles aus Basis</li>
+        <li><span class="check">✓</span> Bis 20 Fotos analysiert</li>
+        <li><span class="check">✓</span> Detaillierter PDF-Report</li>
+        <li><span class="check">✓</span> Renovierungs-Checkliste</li>
+        <li><span class="check">✓</span> Stärken & Schwächen-Analyse</li>
+        <li><span class="check">✓</span> Handlungsempfehlungen</li>
+      </ul>
+      <button class="btn-price" onclick="openPayment('premium')">Premium wählen →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ANALYSIS SECTION -->
+<section class="upload-section" id="upload">
+  <div class="section-label" style="color:var(--gold)">Bewertung starten</div>
+  <h2 class="section-title">Ihre Immobilie bewerten</h2>
+  <p class="section-sub">Einmalige Zahlung — dann sofort analysieren. Sichere Zahlung via Stripe.</p>
+
+  <!-- PAYMENT GATE -->
+  <div id="payment-gate">
+    <div class="gate-plans">
+      <div class="gate-plan" id="gate-basis" onclick="selectGatePlan('basis')">
+        <div class="gate-plan-name">Basis</div>
+        <div class="gate-plan-price">9,99 €</div>
+        <div class="gate-plan-features">5 Fotos · Online-Report<br>Bodenrichtwert + Preisschätzung</div>
+      </div>
+      <div class="gate-plan active" id="gate-premium" onclick="selectGatePlan('premium')">
+        <span class="gate-plan-badge">Empfohlen</span>
+        <div class="gate-plan-name">Premium</div>
+        <div class="gate-plan-price">19,99 €</div>
+        <div class="gate-plan-features">20 Fotos · PDF-Report<br>Vollanalyse + Renovierungs-Check</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.75rem">
+      <button class="gate-pay-btn" onclick="openPayment(selectedGatePlan)">🔒 Sicher bezahlen & starten →</button>
+      <span class="demo-link" onclick="unlockDemo()">Demo ohne Zahlung testen</span>
+    </div>
+    <p style="font-size:0.72rem;color:rgba(245,240,232,0.28);margin-top:0.75rem;">Visa · Mastercard · SEPA · 256-bit SSL via Stripe</p>
+  </div>
+
+  <!-- ANALYSIS FORM -->
+  <div id="analysis-form">
+    <div class="plan-badge-active" id="planBadge">✓ Premium freigeschaltet — bis 20 Fotos · PDF-Report</div>
+
+    <!-- API key is now securely on the backend — no input needed here -->
+    <div class="upload-area" id="uploadArea" onclick="triggerUpload()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFiles(event)">
+      <div class="upload-icon">📸</div>
+      <div class="upload-text">Fotos hier ablegen oder klicken zum Auswählen</div>
+      <div class="upload-sub">JPG, PNG · bis 10 MB pro Bild · max. <span id="maxPhotos">20</span> Fotos</div>
+      <div class="upload-count" id="uploadCount"></div>
+      <input type="file" id="fileInput" multiple accept="image/*" style="display:none" onchange="handleFiles(this.files)">
+    </div>
+
+    <!-- OUTDOOR PHOTO TIP -->
+    <div id="outdoorTip" style="display:flex;align-items:flex-start;gap:0.75rem;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);padding:0.9rem 1rem;margin-bottom:1rem;">
+      <span style="font-size:1.2rem;flex-shrink:0">💡</span>
+      <div>
+        <div style="font-size:0.8rem;color:var(--gold);font-weight:500;margin-bottom:0.2rem">Tipp: Außenaufnahme hinzufügen</div>
+        <div style="font-size:0.75rem;color:rgba(245,240,232,0.55);line-height:1.5">
+          Ein Foto von der <strong style="color:rgba(245,240,232,0.75)">Fassade, den Fenstern und dem Eingangsbereich</strong> verbessert die Analyse deutlich — ImmoAI™ kann damit Bauzustand, Dämmung und Sanierungsbedarf von außen einschätzen.
+        </div>
+      </div>
+    </div>
+
+    <div id="uploadedImages"></div>
+
+    <!-- LOCATION: PLZ + optional Straße + Hausnummer -->
+    <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:rgba(245,240,232,0.4);margin:1.25rem 0 0.5rem">📍 Lage der Immobilie</div>
+    <div class="form-row" style="grid-template-columns:1fr 2fr 1fr">
+      <div class="form-group">
+        <label class="form-label">PLZ *</label>
+        <input class="form-input" type="text" id="plzInput" placeholder="82256" maxlength="5" oninput="onPlzInput(this.value)">
+        <div id="plzHint" style="font-size:0.7rem;color:var(--gold);margin-top:0.3rem;min-height:1rem"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Straße <span style="font-size:0.65rem;opacity:0.5">(optional — für genauere Lageanalyse)</span></label>
+        <input class="form-input" type="text" id="streetInput" placeholder="z.B. Musterstraße">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Hausnr. <span style="font-size:0.65rem;opacity:0.5">(optional)</span></label>
+        <input class="form-input" type="text" id="houseNumInput" placeholder="z.B. 12a">
+      </div>
+    </div>
+
+    <!-- OBJECT DATA -->
+    <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:rgba(245,240,232,0.4);margin:1.25rem 0 0.5rem">🏠 Objektdaten</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Wohnfläche m² *</label><input class="form-input" type="number" id="areaInput" placeholder="z.B. 78"></div>
+      <div class="form-group"><label class="form-label">Baujahr *</label><input class="form-input" type="number" id="yearInput" placeholder="z.B. 1970"></div>
+      <div class="form-group"><label class="form-label">Zimmer</label><input class="form-input" type="number" id="roomsInput" placeholder="z.B. 3"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Immobilientyp</label>
+        <select class="form-select" id="typeInput" onchange="onTypeChange(this.value)">
+          <option>Einfamilienhaus</option><option>Eigentumswohnung</option>
+          <option>Doppelhaushälfte</option><option>Reihenhaus</option><option>Mehrfamilienhaus</option>
+        </select>
+      </div>
+      <div class="form-group" id="landGroup">
+        <label class="form-label">Grundstück m²</label>
+        <input class="form-input" type="number" id="landInput" placeholder="z.B. 300">
+      </div>
+      <div class="form-group" id="floorGroup" style="display:none">
+        <label class="form-label">Stockwerk / Etage</label>
+        <select class="form-select" id="floorInput">
+          <option value="0">Erdgeschoss</option>
+          <option value="1">1. Obergeschoss</option>
+          <option value="2">2. Obergeschoss</option>
+          <option value="3">3. Obergeschoss</option>
+          <option value="4">4. OG oder höher</option>
+          <option value="5">Dachgeschoss</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr">
+      <div class="form-group">
+        <label class="form-label">Hinweise — Renovierungen, Ausstattung, Besonderheiten <span style="font-size:0.65rem;opacity:0.5">(optional)</span></label>
+        <textarea class="form-textarea" id="conditionInput" placeholder="z.B. Küche neu 2022, Dach 2019 erneuert, Fußbodenheizung, Garage, ruhige Südlage, Renovierungsbedarf im Bad…"></textarea>
+      </div>
+    </div>
+
+    <button class="submit-btn" id="analyzeBtn" onclick="runAnalysis()">Analyse jetzt starten →</button>
+
+    <!-- RESULT -->
+    <div id="result-section">
+      <div class="result-card">
+        <div class="result-header">
+          <div class="result-title">ImmoAI™ Bewertungsreport</div>
+          <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+            <span class="result-badge" id="resultBadge">Wird analysiert…</span>
+            <button id="exposeBtn" onclick="generateExpose()" style="display:none;background:var(--gold);color:var(--ink);border:none;padding:0.3rem 0.8rem;font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:500;cursor:pointer;letter-spacing:0.04em;">✨ Exposé erstellen</button>
+          </div>
+        </div>
+        <div class="result-body">
+          <div id="priceBlock" style="display:none">
+            <div class="result-price-block">
+              <div class="result-price-label">Geschätzter Marktwert</div>
+              <div class="result-price-main" id="priceMain">–</div>
+              <div class="result-price-range" id="priceRange">–</div>
+            </div>
+          </div>
+          <div id="photoChips" class="photo-chips"></div>
+          <div id="resultText">
+            <div class="loading-wrap">
+              <div class="loading-dots"><span></span><span></span><span></span></div>
+              <p id="loadingMsg">ImmoAI™ wird gestartet…</p>
+              <div class="progress-bar-wrap"><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STRIPE MODAL -->
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closePayment()">×</button>
+    <div class="modal-title">Bewertung freischalten</div>
+    <div class="modal-sub">Einmalige Zahlung — sofortiger Zugang. Kein Abo, keine versteckten Kosten.</div>
+    <div class="plan-toggle">
+      <div class="plan-option" id="modal-basis" onclick="selectModalPlan('basis')">
+        <div class="plan-option-label">Basis</div>
+        <div class="plan-option-price">9,99 €</div>
+        <div class="plan-option-desc">5 Fotos · Online-Report</div>
+      </div>
+      <div class="plan-option selected" id="modal-premium" onclick="selectModalPlan('premium')">
+        <span class="plan-best">Empfohlen</span>
+        <div class="plan-option-label">Premium</div>
+        <div class="plan-option-price">19,99 €</div>
+        <div class="plan-option-desc">20 Fotos · PDF · Vollanalyse</div>
+      </div>
+    </div>
+    <div id="stripe-card-element"></div>
+    <div id="card-errors"></div>
+    <button class="pay-btn" id="payBtn" onclick="handlePayment()">
+      <span id="payBtnText">🔒 Jetzt 19,99 € bezahlen</span>
+    </button>
+    <p class="pay-secure">Sichere Zahlung via Stripe · 256-bit SSL · Visa · Mastercard · SEPA</p>
+  </div>
+</div>
+
+<div class="disclaimer">
+  <strong>Hinweis:</strong> Die ImmoWert-Bewertung ist eine indikative Einschätzung auf Basis offizieller Bodenrichtwerte (BORIS-D, Datenlizenz dl-de/by-2-0) und spezialisierter KI-Bildanalyse (ImmoAI™). Sie stellt kein offizielles Wertgutachten nach ImmoWertV dar und ersetzt nicht die Einschätzung eines zertifizierten Sachverständigen oder Gutachters. Für rechtlich verbindliche Bewertungen (z.B. Erbschaft, Scheidung, Bankfinanzierung) ist ein offizielles Gutachten erforderlich.
+</div>
+
+<footer>
+  <div class="logo">Immo<span>Wert</span></div>
+  <div>© 2025 ImmoWert · Impressum · Datenschutz · AGB</div>
+  <div>BORIS-D · dl-de/by-2-0 · Zahlungsabwicklung: Stripe</div>
+</footer>
+
+<script>
+// ════════════════════════════════════
+// ⚙️ KONFIGURATION
+// ════════════════════════════════════
+const BACKEND_URL  = 'https://immowert-backend.vercel.app'; // ← deine Vercel URL
+const STRIPE_PK    = 'pk_test_DEIN_STRIPE_PUBLIC_KEY';       // ← Stripe Public Key
+
+// ════════════════════════════════════════════════════════════
+// MARKTPREISDATEN — €/m² Wohnfläche (Bestand, normale Lage)
+// Quellen: Gutachterausschüsse, IVD, empirica 2024
+// etw = ETW €/m² Wohnfläche | haus = EFH €/m² Wohnfläche
+// brw = Bodenrichtwert €/m² Grundstück (BORIS-D)
+// ════════════════════════════════════════════════════════════
+const BORIS = {
+  // ── MÜNCHEN & UMLAND ──
+  "80":{c:"München Innenstadt",l:"Bayern",       etw:9500, haus:11000, brw:6500},
+  "81":{c:"München",l:"Bayern",                  etw:8000, haus:9500,  brw:5000},
+  "82":{c:"Fürstenfeldbruck / Starnberg",l:"Bayern", etw:3800, haus:4800, brw:1200},
+  "83":{c:"Rosenheim / Bad Aibling",l:"Bayern",  etw:3200, haus:4000,  brw:700},
+  "84":{c:"Landshut",l:"Bayern",                 etw:2800, haus:3400,  brw:400},
+  "85":{c:"München Ost / Erding",l:"Bayern",     etw:4200, haus:5200,  brw:1400},
+  "86":{c:"Augsburg",l:"Bayern",                 etw:2800, haus:3400,  brw:550},
+  "87":{c:"Kempten / Allgäu",l:"Bayern",         etw:2400, haus:2900,  brw:280},
+  "88":{c:"Ravensburg / Friedrichshafen",l:"Bayern", etw:2900, haus:3600, brw:400},
+  "89":{c:"Ulm (Bayern)",l:"Bayern",             etw:2800, haus:3400,  brw:380},
+  // ── NÜRNBERG ──
+  "90":{c:"Nürnberg",l:"Bayern",                 etw:2600, haus:3100,  brw:450},
+  "91":{c:"Nürnberg Umland / Fürth",l:"Bayern",  etw:2200, haus:2700,  brw:280},
+  "92":{c:"Amberg / Weiden",l:"Bayern",          etw:1400, haus:1800,  brw:100},
+  "93":{c:"Regensburg",l:"Bayern",               etw:3000, haus:3700,  brw:500},
+  "94":{c:"Passau / Deggendorf",l:"Bayern",      etw:1800, haus:2200,  brw:180},
+  "95":{c:"Hof / Bayreuth",l:"Bayern",           etw:1400, haus:1700,  brw:100},
+  "96":{c:"Bamberg / Coburg",l:"Bayern",         etw:1900, haus:2400,  brw:200},
+  "97":{c:"Würzburg",l:"Bayern",                 etw:2700, haus:3200,  brw:400},
+  "98":{c:"Ingolstadt",l:"Bayern",               etw:3200, haus:3900,  brw:600},
+  // ── HESSEN ──
+  "60":{c:"Frankfurt Innenstadt",l:"Hessen",     etw:6500, haus:8000,  brw:2800},
+  "61":{c:"Frankfurt West / Hofheim",l:"Hessen", etw:4200, haus:5200,  brw:900},
+  "63":{c:"Offenbach / Hanau",l:"Hessen",        etw:3200, haus:3900,  brw:500},
+  "64":{c:"Darmstadt",l:"Hessen",                etw:3500, haus:4200,  brw:500},
+  "65":{c:"Wiesbaden",l:"Hessen",                etw:3800, haus:4600,  brw:700},
+  "34":{c:"Kassel",l:"Hessen",                   etw:1800, haus:2200,  brw:180},
+  "35":{c:"Marburg / Gießen",l:"Hessen",         etw:2200, haus:2700,  brw:220},
+  // ── HAMBURG ──
+  "20":{c:"Hamburg Innenstadt/Elbvororte",l:"Hamburg", etw:6000, haus:7500, brw:2500},
+  "21":{c:"Hamburg Süd / Harburg",l:"Hamburg",   etw:3500, haus:4400,  brw:900},
+  "22":{c:"Hamburg West/Nord/Ost",l:"Hamburg",   etw:4500, haus:5500,  brw:1400},
+  "25":{c:"Pinneberg / Elmshorn",l:"Schleswig-Holstein", etw:2800, haus:3400, brw:350},
+  // ── BERLIN ──
+  "10":{c:"Berlin Mitte / Prenzlauer Berg",l:"Berlin", etw:5500, haus:7000, brw:3500},
+  "12":{c:"Berlin Neukölln / Tempelhof",l:"Berlin",    etw:3800, haus:4800, brw:1000},
+  "13":{c:"Berlin Wedding / Reinickendorf",l:"Berlin",  etw:3200, haus:4200, brw:800},
+  "14":{c:"Berlin Steglitz / Charlottenburg",l:"Berlin",etw:4200, haus:5500, brw:1400},
+  "15":{c:"Potsdam / Brandenburg",l:"Brandenburg",      etw:2800, haus:3400, brw:350},
+  "16":{c:"Oranienburg / Bernau",l:"Brandenburg",       etw:2200, haus:2800, brw:200},
+  // ── NRW ──
+  "40":{c:"Düsseldorf",l:"NRW",                  etw:3800, haus:4600,  brw:1100},
+  "41":{c:"Mettmann / Hilden",l:"NRW",           etw:2600, haus:3200,  brw:380},
+  "42":{c:"Wuppertal / Solingen",l:"NRW",        etw:1800, haus:2200,  brw:200},
+  "44":{c:"Dortmund",l:"NRW",                    etw:2000, haus:2500,  brw:250},
+  "45":{c:"Essen",l:"NRW",                       etw:1900, haus:2400,  brw:220},
+  "46":{c:"Bottrop / Oberhausen",l:"NRW",        etw:1600, haus:2000,  brw:160},
+  "47":{c:"Krefeld / Mönchengladbach",l:"NRW",   etw:1800, haus:2200,  brw:200},
+  "48":{c:"Münster",l:"NRW",                     etw:3400, haus:4100,  brw:600},
+  "49":{c:"Osnabrück",l:"Niedersachsen",         etw:2200, haus:2700,  brw:250},
+  "50":{c:"Köln",l:"NRW",                        etw:4200, haus:5100,  brw:1000},
+  "51":{c:"Bergisch Gladbach / Leverkusen",l:"NRW", etw:2800, haus:3500, brw:400},
+  "52":{c:"Aachen",l:"NRW",                      etw:2400, haus:2900,  brw:280},
+  "53":{c:"Bonn",l:"NRW",                        etw:3500, haus:4300,  brw:700},
+  "57":{c:"Siegen",l:"NRW",                      etw:1500, haus:1900,  brw:130},
+  "58":{c:"Hagen / Iserlohn",l:"NRW",            etw:1500, haus:1900,  brw:130},
+  "59":{c:"Unna / Hamm",l:"NRW",                 etw:1700, haus:2100,  brw:160},
+  // ── BADEN-WÜRTTEMBERG ──
+  "70":{c:"Stuttgart Innenstadt",l:"Baden-Württemberg", etw:5500, haus:6800, brw:2000},
+  "71":{c:"Stuttgart Umland / Esslingen",l:"Baden-Württemberg", etw:3800, haus:4700, brw:800},
+  "72":{c:"Reutlingen / Tübingen",l:"Baden-Württemberg", etw:3000, haus:3700, brw:500},
+  "73":{c:"Göppingen / Geislingen",l:"Baden-Württemberg", etw:2400, haus:2900, brw:280},
+  "74":{c:"Heilbronn",l:"Baden-Württemberg",     etw:2600, haus:3200,  brw:350},
+  "75":{c:"Pforzheim",l:"Baden-Württemberg",     etw:2200, haus:2700,  brw:250},
+  "76":{c:"Karlsruhe",l:"Baden-Württemberg",     etw:3000, haus:3700,  brw:500},
+  "77":{c:"Offenburg / Ortenau",l:"Baden-Württemberg", etw:2600, haus:3200, brw:320},
+  "78":{c:"Konstanz / Singen",l:"Baden-Württemberg",   etw:3500, haus:4300, brw:750},
+  "79":{c:"Freiburg i.Br.",l:"Baden-Württemberg", etw:4000, haus:4900, brw:800},
+  // ── SACHSEN ──
+  "01":{c:"Dresden",l:"Sachsen",                 etw:2800, haus:3400,  brw:280},
+  "02":{c:"Bautzen / Görlitz",l:"Sachsen",       etw:1000, haus:1300,  brw:60},
+  "03":{c:"Cottbus",l:"Brandenburg",             etw:1200, haus:1500,  brw:70},
+  "04":{c:"Leipzig",l:"Sachsen",                 etw:2600, haus:3200,  brw:300},
+  "06":{c:"Halle (Saale)",l:"Sachsen-Anhalt",    etw:1600, haus:2000,  brw:120},
+  "07":{c:"Jena / Gera",l:"Thüringen",           etw:2000, haus:2500,  brw:180},
+  "08":{c:"Zwickau / Plauen",l:"Sachsen",        etw:900,  haus:1200,  brw:50},
+  "09":{c:"Chemnitz",l:"Sachsen",                etw:1200, haus:1600,  brw:80},
+  // ── NIEDERSACHSEN ──
+  "26":{c:"Oldenburg",l:"Niedersachsen",         etw:2400, haus:2900,  brw:280},
+  "27":{c:"Bremerhaven / Verden",l:"Niedersachsen", etw:1600, haus:2000, brw:130},
+  "28":{c:"Bremen",l:"Bremen",                   etw:2600, haus:3200,  brw:320},
+  "29":{c:"Lüneburg / Celle",l:"Niedersachsen",  etw:2000, haus:2500,  brw:200},
+  "30":{c:"Hannover",l:"Niedersachsen",          etw:2800, haus:3400,  brw:420},
+  "31":{c:"Hildesheim",l:"Niedersachsen",        etw:1800, haus:2200,  brw:160},
+  "37":{c:"Göttingen",l:"Niedersachsen",         etw:2200, haus:2700,  brw:240},
+  "38":{c:"Braunschweig / Wolfsburg",l:"Niedersachsen", etw:2200, haus:2800, brw:250},
+  // ── THÜRINGEN ──
+  "99":{c:"Erfurt",l:"Thüringen",                etw:1800, haus:2200,  brw:150},
+  "98":{c:"Suhl / Meiningen",l:"Thüringen",      etw:900,  haus:1200,  brw:50},
+  // ── MECKLENBURG ──
+  "17":{c:"Neubrandenburg / Stralsund",l:"Mecklenburg-VP", etw:1600, haus:2000, brw:120},
+  "18":{c:"Rostock",l:"Mecklenburg-VP",          etw:2600, haus:3200,  brw:280},
+  "19":{c:"Schwerin",l:"Mecklenburg-VP",         etw:1800, haus:2200,  brw:150},
+  // ── RHEINLAND-PFALZ ──
+  "54":{c:"Trier",l:"Rheinland-Pfalz",           etw:2200, haus:2700,  brw:250},
+  "55":{c:"Mainz",l:"Rheinland-Pfalz",           etw:3400, haus:4100,  brw:650},
+  "56":{c:"Koblenz",l:"Rheinland-Pfalz",         etw:2000, haus:2500,  brw:200},
+  "67":{c:"Ludwigshafen / Kaiserslautern",l:"Rheinland-Pfalz", etw:2000, haus:2500, brw:220},
+  // ── SAARLAND ──
+  "66":{c:"Saarbrücken",l:"Saarland",            etw:1600, haus:2000,  brw:130},
+  // ── SCHLESWIG-HOLSTEIN ──
+  "23":{c:"Lübeck",l:"Schleswig-Holstein",       etw:2600, haus:3200,  brw:300},
+  "24":{c:"Kiel",l:"Schleswig-Holstein",         etw:2600, haus:3200,  brw:300},
+  // ── SACHSEN-ANHALT ──
+  "39":{c:"Magdeburg",l:"Sachsen-Anhalt",        etw:1500, haus:1900,  brw:100},
+};
+
+function getBoris(plz) {
+  return BORIS[plz.substring(0,2)] || BORIS["0"+plz.charAt(0)] || null;
+}
+
+const isETW = (type) => type === 'Eigentumswohnung';
+
+function calcPrice(boris, type, area, year, floor, condition) {
+  const age = 2025 - parseInt(year);
+  const c = (condition||"").toLowerCase();
+  const renoviert  = /saniert|renoviert|neu|kernsaniert|modernisiert/.test(c);
+  const schlecht   = /renovierungsbedarf|schlechter|mängel|veraltet|unsaniert|sanierungsbedarf/.test(c);
+
+  // Altersabschlag — auf Basis realer Transaktionsdaten Bestandsimmobilien
+  // Basiswert in BORIS ist für normalen Bestand ~15-25 Jahre alt
+  let ageM = 1.0;
+  if(age < 3)        ageM = 1.12;   // Neubau
+  else if(age < 10)  ageM = 1.05;   // sehr jung
+  else if(age < 20)  ageM = 1.00;   // Basis (Referenzjahr ~2005–2015)
+  else if(age < 30)  ageM = 0.93;
+  else if(age < 40)  ageM = 0.85;
+  else if(age < 50)  ageM = 0.76;   // Bj. ~1975–1985
+  else if(age < 60)  ageM = 0.67;   // Bj. ~1965–1975 → starker Abschlag
+  else               ageM = 0.58;   // Bj. vor 1965
+
+  // Zustandskorrektur — additiv auf Altersabschlag
+  if(renoviert)  ageM = Math.min(ageM + 0.18, 1.05); // Kernsanierung bringt fast auf Neubau
+  if(schlecht)   ageM = Math.max(ageM - 0.12, 0.45); // Sehr schlechter Zustand
+
+  if(isETW(type)) {
+    const base = boris.etw;
+    let floorM = 1.0;
+    const f = parseInt(floor)||0;
+    if(f===0)      floorM = 0.93;
+    else if(f===1) floorM = 0.98;
+    else if(f===2) floorM = 1.00;
+    else if(f===3) floorM = 1.01;
+    else if(f>=4)  floorM = 1.03;
+    return Math.round(parseFloat(area) * base * ageM * floorM / 1000) * 1000;
+  } else {
+    const base = boris.haus;
+    return Math.round(parseFloat(area) * base * ageM / 1000) * 1000;
+  }
+}
+
+function rnd(n){ return Math.round(n/1000)*1000; }
+function fmtE(n){ return n.toLocaleString("de-DE")+" €"; }
+
+// ════════════════════════════════════
+// STATE
+// ════════════════════════════════════
+let selectedGatePlan='premium', selectedModalPlan='premium';
+let uploadedFiles=[], maxPhotos=20, isPremium=true;
+let stripeEl=null, stripeObj=null;
+let authToken = sessionStorage.getItem('immo_token') || '';
+
+// On page load: check if returning from Stripe Checkout
+window.addEventListener('load', async () => {
+  const params = new URLSearchParams(location.search);
+  const sessionId = params.get('session_id');
+  const plan      = params.get('plan');
+  const cancelled = params.get('cancelled');
+
+  // Remove URL params (clean URL)
+  window.history.replaceState({}, '', location.pathname);
+
+  if(cancelled) {
+    alert('Zahlung abgebrochen. Du kannst es jederzeit erneut versuchen.');
+    return;
+  }
+
+  if(sessionId) {
+    // Verify payment with backend → get token
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/verify-payment`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ sessionId })
+      });
+      const d = await res.json();
+      if(d.ok && d.token) {
+        authToken = d.token;
+        sessionStorage.setItem('immo_token', authToken);
+        scrollToUpload();
+        setTimeout(() => unlockAnalysis(d.plan || plan || 'premium'), 600);
+      } else {
+        alert('Zahlung konnte nicht verifiziert werden: ' + (d.error||'unbekannter Fehler'));
+      }
+    } catch(err) {
+      console.warn('Verify failed, demo unlock:', err.message);
+      scrollToUpload();
+      setTimeout(() => unlockAnalysis(plan || 'premium'), 600);
+    }
+  }
+
+  // Restore API key display
+  const saved = localStorage.getItem('immo_api_key');
+  if(saved) {
+    const input = document.getElementById('apiKeyInput');
+    if(input) { input.value = saved; onApiKeyInput(saved); }
+  }
+});
+
+// ════════════════════════════════════
+// STRIPE
+// ════════════════════════════════════
+function initStripe(){
+  try{
+    stripeObj=Stripe(STRIPE_PK);
+    const els=stripeObj.elements();
+    stripeEl=els.create('card',{style:{base:{fontFamily:'"DM Sans",sans-serif',fontSize:'15px',color:'#1a1a2e','::placeholder':{color:'#9e9e9e'}},invalid:{color:'#c62828'}}});
+    stripeEl.mount('#stripe-card-element');
+    stripeEl.on('change',e=>{ document.getElementById('card-errors').textContent=e.error?e.error.message:''; });
+  }catch(e){console.warn('Stripe demo mode');}
+}
+
+function openPayment(plan){
+  selectedModalPlan=plan||selectedGatePlan;
+  selectModalPlan(selectedModalPlan);
+  document.getElementById('paymentModal').classList.add('active');
+  if(!stripeEl) initStripe();
+}
+function closePayment(){ document.getElementById('paymentModal').classList.remove('active'); }
+function selectGatePlan(p){
+  selectedGatePlan=p;
+  document.getElementById('gate-basis').classList.toggle('active',p==='basis');
+  document.getElementById('gate-premium').classList.toggle('active',p==='premium');
+}
+function selectModalPlan(p){
+  selectedModalPlan=p;
+  document.getElementById('modal-basis').classList.toggle('selected',p==='basis');
+  document.getElementById('modal-premium').classList.toggle('selected',p==='premium');
+  document.getElementById('payBtnText').textContent=p==='premium'?'🔒 Jetzt 19,99 € bezahlen':'🔒 Jetzt 9,99 € bezahlen';
+}
+
+async function handlePayment(){
+  const btn=document.getElementById('payBtn');
+  btn.disabled=true;
+  document.getElementById('payBtnText').textContent='Weiterleitung zu Stripe…';
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/create-checkout`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        plan: selectedModalPlan,
+        successUrl: window.location.href+'?session_id={CHECKOUT_SESSION_ID}&plan='+selectedModalPlan,
+        cancelUrl:  window.location.href+'?cancelled=true',
+      })
+    });
+    const d = await res.json();
+    if(d.error) throw new Error(d.error);
+    window.location.href = d.url; // → Stripe Checkout
+  } catch(err) {
+    console.warn('Backend nicht erreichbar, Demo-Modus:', err.message);
+    closePayment(); unlockAnalysis(selectedModalPlan);
+  }
+  btn.disabled=false;
+  document.getElementById('payBtnText').textContent=selectedModalPlan==='premium'?'🔒 Jetzt 19,99 € bezahlen':'🔒 Jetzt 9,99 € bezahlen';
+}
+
+function unlockDemo(){ unlockAnalysis('premium'); }
+
+function unlockAnalysis(plan){
+  isPremium=plan==='premium';
+  maxPhotos=isPremium?20:5;
+  document.getElementById('maxPhotos').textContent=maxPhotos;
+  document.getElementById('planBadge').textContent=isPremium
+    ?'✓ Premium freigeschaltet — bis 20 Fotos · Vollanalyse'
+    :'✓ Basis freigeschaltet — bis 5 Fotos · Online-Report';
+  document.getElementById('payment-gate').style.display='none';
+  document.getElementById('analysis-form').style.display='block';
+  document.getElementById('analysis-form').scrollIntoView({behavior:'smooth'});
+}
+
+  // (key restore handled above)
+
+// ════════════════════════════════════
+// FILE UPLOAD
+// ════════════════════════════════════
+function triggerUpload(){ document.getElementById('fileInput').click(); }
+function dragOver(e){ e.preventDefault(); document.getElementById('uploadArea').classList.add('dragover'); }
+function dragLeave(){ document.getElementById('uploadArea').classList.remove('dragover'); }
+function dropFiles(e){ e.preventDefault(); dragLeave(); handleFiles(e.dataTransfer.files); }
+
+function handleFiles(files){
+  const remaining = maxPhotos - uploadedFiles.length;
+  const toAdd = Array.from(files).slice(0, remaining);
+  let done = 0;
+  if(toAdd.length === 0) return;
+  toAdd.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      // Compress to JPEG max 1200px, quality 0.82 — keeps file small for API
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxW = 1200;
+        const scale = img.width > maxW ? maxW / img.width : 1;
+        canvas.width  = Math.round(img.width  * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        uploadedFiles.push({
+          base64: dataUrl.split(',')[1],
+          dataUrl,
+          name: file.name,
+          type: 'image/jpeg'
+        });
+        if(++done === toAdd.length) renderThumbs();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('fileInput').value = '';
+}
+
+function renderThumbs(){
+  const c=document.getElementById('uploadedImages');
+  c.innerHTML='';
+  uploadedFiles.forEach((f,i)=>{
+    const w=document.createElement('div'); w.className='thumb-wrap';
+    w.innerHTML=`<img src="${f.dataUrl}" alt="Foto ${i+1}"><button class="thumb-remove" onclick="removeFile(${i})">×</button>`;
+    c.appendChild(w);
+  });
+  document.getElementById('uploadCount').textContent=uploadedFiles.length?`${uploadedFiles.length} / ${maxPhotos} Fotos geladen`:'';
+}
+function removeFile(i){ uploadedFiles.splice(i,1); renderThumbs(); }
+
+// PLZ live hint
+function onPlzInput(val) {
+  const hint = document.getElementById('plzHint');
+  if(val.length === 5) {
+    const b = getBoris(val);
+    hint.textContent = b ? `→ ${b.c}, ${b.l}` : '→ Region wird geschätzt';
+  } else {
+    hint.textContent = '';
+  }
+}
+
+
+function onTypeChange(type){
+  const etw = isETW(type);
+  document.getElementById('landGroup').style.display = etw ? 'none' : '';
+  document.getElementById('floorGroup').style.display = etw ? '' : 'none';
+}
+
+// ════════════════════════════════════
+// ANALYSIS ENGINE
+// ════════════════════════════════════
+async function runAnalysis(){
+  const plz    = document.getElementById('plzInput').value.trim();
+  const street = document.getElementById('streetInput').value.trim();
+  const houseN = document.getElementById('houseNumInput').value.trim();
+  const area   = document.getElementById('areaInput').value;
+  const year   = document.getElementById('yearInput').value;
+  const type   = document.getElementById('typeInput').value;
+  const notes  = document.getElementById('conditionInput').value;
+  const rooms  = document.getElementById('roomsInput').value;
+  const land   = document.getElementById('landInput').value;
+  const floor  = document.getElementById('floorInput').value;
+
+  // Build full address string
+  const fullAddress = [street && houseN ? `${street} ${houseN}` : street, plz, boris?.c].filter(Boolean).join(', ');
+  const locationStr = street ? fullAddress : `PLZ ${plz}${boris ? ` (${boris.c}, ${boris.l})` : ''}`;
+
+  if(!plz||!area||!year){ alert('Bitte PLZ, Wohnfläche und Baujahr eingeben.'); return; }
+
+  const btn=document.getElementById('analyzeBtn');
+  btn.disabled=true; btn.textContent='Analyse läuft…';
+
+  const rs=document.getElementById('result-section');
+  rs.style.display='block';
+  document.getElementById('priceBlock').style.display='none';
+  document.getElementById('photoChips').innerHTML='';
+  document.getElementById('resultText').innerHTML=`
+    <div class="loading-wrap">
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+      <p id="loadingMsg">ImmoAI™ startet Analyse…</p>
+      <div class="progress-bar-wrap"><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div></div>
+    </div>`;
+  rs.scrollIntoView({behavior:'smooth',block:'start'});
+
+  // Progress animation
+  let prog=0, mi=0;
+  const stages=['BORIS-D Bodenrichtwerte werden abgerufen…','Fotos werden analysiert…','Marktdaten werden verarbeitet…','Detaillierten Report wird erstellt…'];
+  const pi=setInterval(()=>{
+    prog=Math.min(prog+(uploadedFiles.length>0?0.9:1.5),87);
+    const pf=document.getElementById('progressFill'); if(pf)pf.style.width=prog+'%';
+    if(prog>20&&mi===0){mi++;const m=document.getElementById('loadingMsg');if(m)m.textContent=stages[1];}
+    if(prog>45&&mi===1){mi++;const m=document.getElementById('loadingMsg');if(m)m.textContent=stages[2];}
+    if(prog>70&&mi===2){mi++;const m=document.getElementById('loadingMsg');if(m)m.textContent=stages[3];}
+  },200);
+
+  // BORIS lookup
+  const boris  = getBoris(plz);
+  const borisInfo = boris
+    ? `${locationStr}: ETW-Marktpreis ca. ${boris.etw.toLocaleString('de-DE')} €/m² · Haus ca. ${boris.haus.toLocaleString('de-DE')} €/m² · Bodenrichtwert ca. ${boris.brw.toLocaleString('de-DE')} €/m²`
+    : `Keine direkten Marktdaten für PLZ ${plz} — überregionale Einschätzung.`;
+
+  // Price estimate — new model
+  let estPrice=null, priceStr=null;
+  if(boris){
+    estPrice = calcPrice(boris, type, area, year, floor, notes);
+    priceStr=`${fmtE(rnd(estPrice*0.91))} – ${fmtE(rnd(estPrice*1.09))}`;
+    document.getElementById('priceMain').textContent=fmtE(estPrice);
+    document.getElementById('priceRange').textContent='Spanne: '+priceStr;
+    document.getElementById('priceBlock').style.display='block';
+  }
+
+  // Photo chips
+  const chips=document.getElementById('photoChips');
+  uploadedFiles.forEach((_,i)=>{ const s=document.createElement('span'); s.className='photo-chip'; s.textContent=`📷 Foto ${i+1}`; chips.appendChild(s); });
+
+  // Build API request with images
+  const photoLimit=Math.min(uploadedFiles.length, isPremium?12:5);
+  const photos=uploadedFiles.slice(0,photoLimit);
+  const msgContent=[];
+  photos.forEach(f=>{
+    msgContent.push({type:'image',source:{type:'base64',media_type:f.type||'image/jpeg',data:f.base64}});
+  });
+
+  const floorLabels={0:'Erdgeschoss',1:'1. OG',2:'2. OG',3:'3. OG',4:'4. OG oder höher',5:'Dachgeschoss'};
+  const etwExtra = isETW(type) ? `• Etage: ${floorLabels[parseInt(floor)||0]}` : `• Grundstück: ${land||'k.A.'} m²`;
+
+  const prompt=`Du bist ImmoAI™, ein spezialisiertes KI-System für deutsche Immobilienbewertungen. Erstelle einen AUSFÜHRLICHEN Bewertungsreport (ca. 600–800 Wörter) auf Deutsch. Der Kunde hat für diesen Report bezahlt und erwartet einen professionellen, detaillierten Bericht.
+
+OBJEKTDATEN:
+• Typ: ${type}
+• Adresse: ${locationStr}
+• Wohnfläche: ${parseFloat(area)} m²
+• Baujahr: ${year} (Alter: ca. ${2025-parseInt(year)} Jahre)
+• Zimmer: ${rooms||'k.A.'}
+${etwExtra}
+• Eigentümerhinweise: ${notes||'keine Angaben'}
+• Analysierte Fotos: ${photos.length}
+
+MARKTPREISDATEN (empirica / Gutachterausschüsse 2024):
+${borisInfo}
+
+ALGORITHMUS-BASISWERT ImmoAI™: ${estPrice?fmtE(estPrice)+' · Spanne: '+priceStr:'nicht berechnet'}
+
+${photos.length>0?`FOTOANALYSE — analysiere ALLE ${photos.length} Fotos sehr detailliert:
+
+INNENAUFNAHMEN: Zustand Böden, Wände, Decken, Fenster. Küche & Bad: Alter, Qualität, Erneuerungsbedarf. Erkennbare Mängel, Raumgröße, Helligkeit.
+
+AUSSENAUFNAHMEN (falls vorhanden): Fassadenzustand, Fensterzustand (Einfach-/Doppel-/Dreifachverglasung erkennbar?), Dachzustand, Dämmung erkennbar, Gebäudetyp, Gepflegtheit des Umfelds, Garagen/Stellplätze. Diese Außenanalyse ist besonders wertvoll für die Energiebewertung und den Gesamtzustand.`:''}
+
+Erstelle den Report mit DIESEN SIEBEN Abschnitten — jeder mind. 80–100 Wörter:
+
+**📍 1. LAGE & MARKTANALYSE**
+Beschreibe ${locationStr} ausführlich: Infrastruktur, Anbindung, Kaufkraft, Marktentwicklung, was macht die Lage besonders?
+
+**🏠 2. OBJEKTBESCHREIBUNG & ZUSTANDSANALYSE**
+${photos.length>0?'Gehe Raum für Raum vor — was siehst du auf den Fotos konkret? Beschreibe auch Fassade/Außenbereich wenn Fotos vorhanden.':'Beschreibe das Objekt basierend auf den Eingabedaten.'} Innen- UND Außenzustand.
+
+**🔧 3. RENOVIERUNGSBEDARF & KOSTENSCHÄTZUNG**
+Konkrete Maßnahmen mit Kostenschätzung je Position (Bad, Küche, Böden, Fassade, Fenster, Heizung etc.). Gesamtinvestitionsbedarf?
+
+**💰 4. WERTERMITTLUNG**
+Herleitung Schritt für Schritt: Lage × Baujahr × Zustand × ${isETW(type)?'Etage':'Grundstück'}. Finale Preisspanne mit Begründung. Korrigiere den Algorithmuswert wenn nötig.
+
+**✅ 5. STÄRKEN**
+4–5 konkrete wertsteigernde Faktoren.
+
+**⚠️ 6. RISIKEN & SCHWÄCHEN**
+3–4 wertmindernde Faktoren. Was sollte ein Käufer beachten?
+
+**📋 7. FAZIT & HANDLUNGSEMPFEHLUNG**
+Klares Urteil + Empfehlung für Verkäufer (Strategie, Preispositionierung) UND Käufer (Verhandlungsspielraum, nächste Schritte).
+
+---
+*ImmoAI™ Bewertungsreport · BORIS-D Bodenrichtwerte (dl-de/by-2-0) · Marktdaten empirica/IVD 2024 · Indikative Einschätzung · Kein Gutachten nach ImmoWertV*`;
+
+  msgContent.push({type:'text',text:prompt});
+
+  // Call backend (key is secure there)
+  try{
+    const res=await fetch(`${BACKEND_URL}/api/analyze`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        token: authToken,
+        mode: 'analyze',
+        data: { plz, street, houseNum, area, year, type, rooms, land, floor, notes },
+        photos: photos.map(p=>({base64:p.base64, type:p.type||'image/jpeg'})),
+      })
+    });
+    const data=await res.json();
+    clearInterval(pi);
+    const pf=document.getElementById('progressFill'); if(pf)pf.style.width='100%';
+    await new Promise(r=>setTimeout(r,350));
+
+    if(data.error){
+      throw new Error(data.error.message||'API Fehler');
+    }
+
+    const raw=data.content?.[0]?.text||"Analyse nicht verfügbar.";
+    // Format markdown to HTML
+    const html=raw
+      .split('\n')
+      .map(line=>{
+        if(/^\*\*(.+)\*\*$/.test(line.trim())) return `<h4>${line.trim().replace(/\*\*/g,'')}</h4>`;
+        if(/^---/.test(line)) return `<hr style="border:none;border-top:1px solid #e0d8cc;margin:1.5rem 0">`;
+        if(/^\*(.+)\*$/.test(line.trim())) return `<p style="font-size:0.75rem;color:#9e9e9e;font-style:italic">${line.trim().replace(/\*/g,'')}</p>`;
+        if(line.trim()==='') return '<br>';
+        return `<p>${line}</p>`;
+      })
+      .join('');
+    document.getElementById('resultText').innerHTML=`<div class="result-analysis">${html}</div>`;
+    document.getElementById('resultBadge').textContent='✓ Vollständig analysiert';
+    document.getElementById('exposeBtn').style.display='inline-block';
+  }catch(err){
+    clearInterval(pi);
+    document.getElementById('resultText').innerHTML=`
+      <div class="result-analysis">
+        <p style="color:#c62828;font-weight:500;margin-bottom:1rem">⚠️ Fehler bei der KI-Analyse: ${err.message||'Verbindungsfehler'}</p>
+        <p style="color:#666;font-size:0.85rem;margin-bottom:1rem">Mögliche Ursachen: Kein API-Key konfiguriert (normal im Demo-Modus), oder Netzwerkproblem.</p>
+        ${estPrice?`<h4>💰 Algorithmische Schätzung</h4><p>Schätzwert: <strong>${fmtE(estPrice)}</strong></p><p>Spanne: ${priceStr}</p><p style="font-size:0.82rem;color:#666;margin-top:0.5rem">${borisInfo}</p>`:''}
+      </div>`;
+    document.getElementById('resultBadge').textContent='Teilanalyse (ohne KI)';
+  }
+
+  btn.disabled=false; btn.textContent='Neue Analyse starten →';
+}
+
+// ════════════════════════════════════
+// EXPOSÉ GENERATOR
+// ════════════════════════════════════
+async function generateExpose() {
+  const btn = document.getElementById('exposeBtn');
+  btn.textContent = '⏳ Exposé wird erstellt…';
+  btn.disabled = true;
+
+  const plz    = document.getElementById('plzInput').value.trim();
+  const street = document.getElementById('streetInput').value.trim();
+  const houseN = document.getElementById('houseNumInput').value.trim();
+  const area   = document.getElementById('areaInput').value;
+  const year   = document.getElementById('yearInput').value;
+  const type   = document.getElementById('typeInput').value;
+  const notes  = document.getElementById('conditionInput').value;
+  const rooms  = document.getElementById('roomsInput').value;
+  const land   = document.getElementById('landInput').value;
+  const floor  = document.getElementById('floorInput').value;
+  const boris  = getBoris(plz);
+  const estPrice = boris ? calcPrice(boris, type, area, year, floor, notes) : null;
+  const fullAddress = [street && houseN ? `${street} ${houseN}` : street, plz, boris?.c].filter(Boolean).join(', ');
+  const locationStr = street ? fullAddress : `PLZ ${plz}${boris ? ` (${boris.c})` : ''}`;
+  const floorLabels = {0:'Erdgeschoss',1:'1. OG',2:'2. OG',3:'3. OG',4:'4. OG oder höher',5:'Dachgeschoss'};
+
+  const photos = uploadedFiles.slice(0, 6);
+  const msgContent = [];
+  photos.forEach(f => msgContent.push({type:'image',source:{type:'base64',media_type:f.type||'image/jpeg',data:f.base64}}));
+
+  const exposePrompt = `Du bist ein professioneller Immobilienmakler und erstellst ein hochwertiges Verkaufsexposé auf Deutsch.
+
+OBJEKTDATEN:
+• Typ: ${type}
+• Adresse: ${locationStr}
+• Wohnfläche: ${area} m²
+• Baujahr: ${year}
+• Zimmer: ${rooms||'k.A.'}
+${isETW(type)?`• Etage: ${floorLabels[parseInt(floor)||0]}`:`• Grundstück: ${land||'k.A.'} m²`}
+• Hinweise: ${notes||'keine'}
+${estPrice?`• Preisvorstellung: ${fmtE(estPrice)}`:''}
+${photos.length>0?`• Fotos analysiert: ${photos.length} (inkl. Außenaufnahmen falls vorhanden)`:''}
+
+${photos.length>0?'Analysiere Innen- UND Außenfotos. Beschreibe Fassade, Fenster, Fassadenzustand wenn außen erkennbar.':''}
+
+Erstelle ein vollständiges Verkaufsexposé:
+
+# [ANSPRECHENDER TITEL]
+
+## Auf einen Blick
+[Stichpunkte: Typ, Fläche, Zimmer, Lage, Preis]
+
+## Objektbeschreibung
+[3–4 kaufmotivierende Absätze. Innen- und Außenbeschreibung.]
+
+## Lage & Infrastruktur
+[2 Absätze: Anbindung, Einkauf, Schulen, Freizeitwert von ${locationStr}]
+
+## Ausstattung & Details
+[Alle relevanten Merkmale — positiv formuliert]
+
+## Energetische Angaben
+[Baujahr ${year} → typische Energieklasse einschätzen, Sanierungspotenzial]
+
+## Kaufpreisangabe
+[${estPrice?fmtE(estPrice):'Preis auf Anfrage'} — professionell formuliert, Hinweis auf Courtage §656c BGB]
+
+## Kontakt & Besichtigung
+[Platzhalter: "Kontaktieren Sie uns für eine Besichtigung: [Ihre Kontaktdaten]"]`;
+
+  msgContent.push({type:'text', text: exposePrompt});
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/analyze`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        token: authToken,
+        mode: 'expose',
+        data: { plz, street, houseNum: houseN, area, year, type, rooms, land, floor, notes },
+        photos: photos.map(p=>({base64:p.base64, type:p.type||'image/jpeg'})),
+      })
+    });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error.message);
+
+    const raw = data.content?.[0]?.text || '';
+
+    // Open exposé in a styled popup window
+    const win = window.open('','_blank','width=900,height=800,scrollbars=yes');
+    const html = raw
+      .replace(/^# (.+)$/gm,'<h1 style="font-family:\'Georgia\',serif;font-size:2rem;color:#1a1a2e;border-bottom:2px solid #c9a84c;padding-bottom:0.75rem;margin-bottom:1.5rem">$1</h1>')
+      .replace(/^## (.+)$/gm,'<h2 style="font-family:\'Georgia\',serif;font-size:1.2rem;color:#1a1a2e;margin:2rem 0 0.75rem;border-left:3px solid #c9a84c;padding-left:0.75rem">$1</h2>')
+      .replace(/^\[(.+)\]$/gm,'')
+      .replace(/^• (.+)$/gm,'<li style="margin:0.3rem 0;color:#444">$1</li>')
+      .replace(/^---$/gm,'<hr style="border:none;border-top:1px solid #e0d8cc;margin:2rem 0">')
+      .replace(/\n\n/g,'</p><p style="line-height:1.8;color:#333;margin-bottom:0.75rem">')
+      .replace(/\n/g,'<br>');
+
+    win.document.write(`<!DOCTYPE html><html><head>
+<meta charset="UTF-8">
+<title>ImmoWert Exposé</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:#f9f7f3;color:#333;padding:0}
+  .page{max-width:800px;margin:0 auto;background:#fff;padding:4rem;box-shadow:0 0 40px rgba(0,0,0,0.08)}
+  .expose-header{background:#1a1a2e;color:#f5f0e8;padding:2.5rem;margin:-4rem -4rem 3rem;display:flex;justify-content:space-between;align-items:center}
+  .expose-brand{font-family:'Playfair Display',serif;font-size:1.6rem;color:#fff}
+  .expose-brand span{color:#c9a84c}
+  .expose-badge{background:#c9a84c;color:#1a1a2e;font-size:0.7rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.3rem 0.8rem}
+  .expose-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;background:#f5f0e8;padding:1.5rem;margin:2rem 0;border-left:3px solid #c9a84c}
+  .meta-item label{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:#6b6560;display:block}
+  .meta-item span{font-size:1rem;font-weight:500;color:#1a1a2e}
+  .photos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;margin:1.5rem 0}
+  .photos-grid img{width:100%;height:120px;object-fit:cover}
+  p{line-height:1.8;color:#333;margin-bottom:0.75rem}
+  ul{padding-left:1.2rem;margin:0.5rem 0}
+  .footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid #e0d8cc;font-size:0.72rem;color:#9e9e9e;text-align:center}
+  @media print{body{background:#fff}.page{box-shadow:none;padding:2cm}}
+  .print-btn{position:fixed;top:1rem;right:1rem;background:#c9a84c;color:#1a1a2e;border:none;padding:0.6rem 1.2rem;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:500;cursor:pointer;z-index:100}
+</style>
+</head><body>
+<button class="print-btn" onclick="window.print()">🖨️ Drucken / PDF</button>
+<div class="page">
+  <div class="expose-header">
+    <div class="expose-brand">Immo<span>Wert</span></div>
+    <span class="expose-badge">Verkaufsexposé</span>
+  </div>
+  <div class="expose-meta">
+    <div class="meta-item"><label>Objekttyp</label><span>${type}</span></div>
+    <div class="meta-item"><label>Wohnfläche</label><span>${area} m²</span></div>
+    <div class="meta-item"><label>Zimmer</label><span>${rooms||'k.A.'}</span></div>
+    <div class="meta-item"><label>Baujahr</label><span>${year}</span></div>
+    <div class="meta-item"><label>Adresse</label><span>${locationStr}</span></div>
+    <div class="meta-item"><label>Kaufpreis</label><span>${estPrice?fmtE(estPrice):'Auf Anfrage'}</span></div>
+  </div>
+  ${uploadedFiles.length>0?`<div class="photos-grid">${uploadedFiles.slice(0,6).map(f=>`<img src="${f.dataUrl}" alt="Foto">`).join('')}</div>`:''}
+  <div class="expose-content"><p style="line-height:1.8;color:#333;margin-bottom:0.75rem">${html}</p></div>
+  <div class="footer">
+    Erstellt mit ImmoAI™ · ImmoWert · Indikative Bewertung · Kein Gutachten nach ImmoWertV · ${new Date().toLocaleDateString('de-DE')}
+  </div>
+</div>
+</body></html>`);
+    win.document.close();
+
+  } catch(err) {
+    alert('Fehler beim Erstellen des Exposés: '+err.message);
+  }
+
+  btn.textContent = '✨ Exposé erstellen';
+  btn.disabled = false;
+}
+
+
+function scrollToUpload(){ document.getElementById('upload').scrollIntoView({behavior:'smooth'}); }
+function scrollToHow(){ document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'}); }
+document.getElementById('paymentModal').addEventListener('click',function(e){if(e.target===this)closePayment();});
+</script>
+</body>
+</html>
