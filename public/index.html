@@ -540,7 +540,7 @@ footer .logo span{color:var(--gold);}
 // ════════════════════════════════════
 // ⚙️ KONFIGURATION
 // ════════════════════════════════════
-const BACKEND_URL  = 'https://immowert-backend.vercel.app'; // ← deine Vercel URL
+const BACKEND_URL  = 'https://immowert-tau.vercel.app';
 const STRIPE_PK    = 'pk_test_DEIN_STRIPE_PUBLIC_KEY';       // ← Stripe Public Key
 
 // ════════════════════════════════════════════════════════════
@@ -1032,12 +1032,13 @@ Klares Urteil + Empfehlung für Verkäufer (Strategie, Preispositionierung) UND 
   msgContent.push({type:'text',text:prompt});
 
   // Call backend (key is secure there)
+  const tokenToSend = authToken || 'demo-token-immowert-2025';
   try{
     const res=await fetch(`${BACKEND_URL}/api/analyze`,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        token: authToken,
+        token: tokenToSend,
         mode: 'analyze',
         data: { plz, street, houseNum, area, year, type, rooms, land, floor, notes },
         photos: photos.map(p=>({base64:p.base64, type:p.type||'image/jpeg'})),
@@ -1049,10 +1050,11 @@ Klares Urteil + Empfehlung für Verkäufer (Strategie, Preispositionierung) UND 
     await new Promise(r=>setTimeout(r,350));
 
     if(data.error){
-      throw new Error(data.error.message||'API Fehler');
+      throw new Error(data.error||'API Fehler');
     }
 
-    const raw=data.content?.[0]?.text||"Analyse nicht verfügbar.";
+    // Backend returns data.text directly
+    const raw = data.text || data.content?.[0]?.text || "Analyse nicht verfügbar.";
     // Format markdown to HTML
     const html=raw
       .split('\n')
